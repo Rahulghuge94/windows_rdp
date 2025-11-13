@@ -6,7 +6,7 @@ jobs:
   dev_tunnel:
     runs-on: windows-latest
     # Set a reasonable timeout for your debugging/development session (e.g., 6 hours)
-    timeout-minutes: 360 
+    timeout-minutes: 360
 
     steps:
       # 1. Download and Extract the VS Code CLI
@@ -15,7 +15,7 @@ jobs:
           Invoke-WebRequest https://code.visualstudio.com/sha/download?build=stable&platform=cli -OutFile vscode-cli.zip
           Expand-Archive vscode-cli.zip -DestinationPath vscli
         shell: pwsh
-      
+
       # 2. Add CLI to PATH for easier use
       - name: Add VS Code CLI to PATH
         run: $env:PATH = "$env:GITHUB_WORKSPACE\vscli;$env:PATH"
@@ -23,17 +23,17 @@ jobs:
 
       # 3. Start the VS Code Remote Tunnel
       - name: Start VS Code Tunnel
-        run: ./vscli/code.exe tunnel
+        # The '&' runs the tunnel process in the background, allowing the subsequent step to run.
+        # This is CRITICAL for the keep-alive action to work.
+        run: ./vscli/code.exe tunnel &
         shell: pwsh
         env:
           # Your GitHub token is needed to authenticate the VS Code Tunnel.
-          # This requires the secret to be set up as GITHUB_TOKEN in your repository secrets.
-          # NOTE: The default GITHUB_TOKEN provided by GitHub Actions will NOT work,
-          # as it doesn't have the permissions to link the tunnel.
           # You MUST use a Personal Access Token (PAT) with 'workflow' scope and store it as a secret (e.g., VSCODE_PAT).
-          # You will be prompted in the console to complete the login/tunnel naming via a URL.
           GITHUB_TOKEN: ${{ secrets.VSCODE_PAT }}
-          
-      # 4. Keep the job alive while the tunnel runs (Optional but recommended)
-      - name: Stale while running
-        uses: actions/stale-while-running@v2
+
+      # 4. Keep the job alive while the tunnel runs
+      # This action simply loops and prevents the job from completing,
+      # allowing the background tunnel process to remain active until timeout-minutes is reached.
+      - name: Keep Job Alive
+        uses: abhishek-dev/keep-alive-action@v1.0.1
