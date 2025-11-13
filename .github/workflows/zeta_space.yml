@@ -34,7 +34,7 @@ jobs:
           cd $HOME/zeta
           
           # Make the install script executable
-          chmod +x deploy/install.sh
+          chmod +x deploy/install_hosted_runner.sh
           
           # Run the installation script
           # Note: This script expects TRIGGERING_USER to be set (done above)
