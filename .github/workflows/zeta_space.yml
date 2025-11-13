@@ -32,16 +32,12 @@ jobs:
       #   shell: bash
 
       # 4. Download and Extract the VS Code CLI (Linux/bash equivalent)
-      - name: Download VS Code CLI
-        run: |
-          # Download Linux x64 CLI
-          curl -L "https://code.visualstudio.com/sha/download?build=stable&os=linux-x64" -o vscode-cli.tar.gz
-          # Extract to vscli directory
-          mkdir -p vscli
-          tar -xzf vscode-cli.tar.gz -C vscli
-          # Ensure the binary is executable
-          chmod +x vscli/code
-        shell: bash
+      - name: Install VS Code CLI
+        # Use the action to make the `code` command available in the PATH
+        uses: eitsupi/setup-vscode-cli@v1
+
+      - name: Run a VS Code CLI command (e.g., check version)
+        run: code --version
 
       # 5. Start the VS Code Remote Tunnel (Linux/bash equivalent)
       - name: Start VS Code Tunnel
