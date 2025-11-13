@@ -1,4 +1,4 @@
-name: Remote Tunnel Access
+name: Zeta_space
 on:
   workflow_dispatch: # Only run manually
 
@@ -15,10 +15,8 @@ jobs:
       - name: Checkout private repository
         uses: actions/checkout@v4
         with:
-          # If the repository is the current one, the default token usually works.
-          # If it's a different private repo, ensure your VSCODE_PAT has access, 
-          # or use 'token: ${{ secrets.GITHUB_TOKEN }}' if the repo is in the same org/user scope.
-          token: ${{ secrets.VSCODE_PAT }} # Using your PAT to ensure broader permissions for VS Code tunnel auth if needed, but GITHUB_TOKEN is generally preferred for checkout.
+          repository: Rahulghuge94/zeta 
+          token: ${{ secrets.VSCODE_PAT }}
           
       # 3. Open project and run install script
       # This runs the script from the cloned project root.
