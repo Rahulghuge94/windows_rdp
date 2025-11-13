@@ -4,139 +4,160 @@ on:
 
 jobs:
   dev_tunnel:
-    # 1. Change to Ubuntu runner
     runs-on: ubuntu-latest
-    # Set a reasonable timeout for your debugging/development session
     timeout-minutes: 360
     
     steps:
       - name: Set TRIGGERING_USER environment variable
         run: echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
         
-      # 2. Clone the private repository
-      # Uses the default GITHUB_TOKEN (or an explicit token if needed)
       - name: Checkout private repository
         uses: actions/checkout@v4
         with:
           repository: Rahulghuge94/zeta 
           token: ${{ secrets.VSCODE_PAT }}
           
-      # # 3. Open project and run install script
-      # # This runs the script from the cloned project root.
-      # - name: Run deploy/install.sh script
-      #   run: |
-      #     # Make sure the script is executable, then run it.
-      #     chmod +x deploy/install.sh
-      #     ./deploy/install.sh
-      #   # The default shell on ubuntu-latest is 'bash'
-      #   shell: bash
-
-      # 4. Download and Extract the VS Code CLI (Linux/bash equivalent)
-      - name: Download VS Code CLI
+      - name: Download and Extract VS Code CLI
         run: |
           echo "Downloading VS Code CLI..."
-          mkdir -p ~/vscode-cli
-          cd ~/vscode-cli
+          mkdir -p $HOME/vscode-cli
+          cd $HOME/vscode-cli
           wget -q https://update.code.visualstudio.com/latest/cli-linux-x64/stable -O vscode_cli.tar.gz
           tar -xzf vscode_cli.tar.gz
-          echo "$HOME/vscode-cli/bin" >> $GITHUB_PATH
-          echo "VS Code CLI installed at: $(which code)"
-
-      # 5. Start the VS Code Remote Tunnel (Linux/bash equivalent)
+          
+          # Verify the extraction
+          ls -la
+          
+          # Find the actual code binary
+          CODE_BIN=$(find $HOME/vscode-cli -name "code" -type f | head -n 1)
+          echo "Found code binary at: $CODE_BIN"
+          
+          # Make it executable
+          chmod +x "$CODE_BIN"
+          
+          # Add to PATH
+          echo "$(dirname $CODE_BIN)" >> $GITHUB_PATH
+          
       - name: Start VS Code Tunnel
         run: |
           echo "Starting VS Code Tunnel..."
           
-          # Use 'code' binary from the extracted directory
-          CLI_PATH="~/vscode-cli/bin"
+          # Wait for PATH to be updated
+          sleep 2
+          
+          # Verify code is available
+          which code || echo "Warning: code not in PATH, will use full path"
+          
           LOG_FILE="tunnel.log"
           ERROR_FILE="tunnel-error.log"
           
           # Set a custom tunnel name
-          RUN_ID_SHORT=$(echo $GITHUB_RUN_ID | tail -c 9) # Get last 8 characters + newline
-          TUNNEL_NAME="gh-$RUN_ID_SHORT"
+          RUN_ID_SHORT=$(echo $GITHUB_RUN_ID | tail -c 9)
+          TUNNEL_NAME="gh-runner-$RUN_ID_SHORT"
           
-          # Start tunnel in background using nohup and redirect output
-          # nohup detaches the process, allowing the script to continue.
-          # The '&' runs it in the background.
-          nohup $CLI_PATH tunnel \
+          echo "Tunnel name will be: $TUNNEL_NAME"
+          echo "GitHub Actor: $GITHUB_ACTOR"
+          
+          # Find code binary
+          CODE_BIN=$(which code 2>/dev/null || find $HOME/vscode-cli -name "code" -type f | head -n 1)
+          echo "Using code binary: $CODE_BIN"
+          
+          # Start tunnel with proper authentication
+          # The tunnel command will use GITHUB_TOKEN for authentication
+          nohup "$CODE_BIN" tunnel \
             --accept-server-license-terms \
             --name "$TUNNEL_NAME" \
             > "$LOG_FILE" 2> "$ERROR_FILE" &
             
-          # Get the PID of the last background process
           TUNNEL_PID=$!
           
           echo "Tunnel process started with PID: $TUNNEL_PID"
-          echo "Tunnel name: $TUNNEL_NAME"
           echo "Waiting for tunnel to initialize..."
           
           URL_FOUND=false
-          MAX_WAIT_TIME=120 # Wait up to 2 minutes for URL
+          MAX_WAIT_TIME=120
           ELAPSED=0
           
           while [ "$URL_FOUND" = false ] && [ "$ELAPSED" -lt "$MAX_WAIT_TIME" ]; do
             sleep 5
             ELAPSED=$((ELAPSED + 5))
             
+            # Check if process is still running
+            if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
+              echo "ERROR: Tunnel process exited unexpectedly."
+              echo "=== Log Output ==="
+              cat "$LOG_FILE" 2>/dev/null || echo "No log file"
+              echo "=== Error Output ==="
+              cat "$ERROR_FILE" 2>/dev/null || echo "No error file"
+              exit 1
+            fi
+            
             if [ -f "$LOG_FILE" ]; then
               LOG_CONTENT=$(cat "$LOG_FILE")
-              echo -e "\n--- Tunnel Output ---"
-              echo "$LOG_CONTENT"
-              echo "--- End Output ---\n"
               
               # Check if URL is in the output
               if echo "$LOG_CONTENT" | grep -q "vscode\.dev/tunnel/"; then
                 URL_FOUND=true
-                echo -e "\n=========================================="
-                echo "TUNNEL IS READY!"
+                echo ""
                 echo "=========================================="
+                echo "✓ TUNNEL IS READY!"
+                echo "=========================================="
+                echo ""
+                echo "$LOG_CONTENT" | grep "vscode\.dev/tunnel/"
+                echo ""
+              elif echo "$LOG_CONTENT" | grep -qi "error\|failed"; then
+                echo "ERROR detected in log:"
+                cat "$LOG_FILE"
+                cat "$ERROR_FILE" 2>/dev/null
+                exit 1
               fi
             fi
             
-            # Also check error log
-            if [ -f "$ERROR_FILE" ]; then
+            if [ -f "$ERROR_FILE" ] && [ -s "$ERROR_FILE" ]; then
               ERROR_CONTENT=$(cat "$ERROR_FILE")
-              if [ -n "$ERROR_CONTENT" ]; then
-                echo -e "\n--- Error Output ---"
+              if echo "$ERROR_CONTENT" | grep -qi "error\|authentication"; then
+                echo "Authentication or error detected:"
                 echo "$ERROR_CONTENT"
-                echo "--- End Errors ---\n"
+                exit 1
               fi
             fi
             
-            # Check if process is still running. 'kill -0' checks if a process exists.
-            if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
-              echo "ERROR: Tunnel process exited unexpectedly. Log may contain details."
-              cat "$ERROR_FILE" # Output the error log before exiting
-              exit 1
+            if [ $((ELAPSED % 20)) -eq 0 ]; then
+              echo "[$ELAPSED seconds] Still waiting for tunnel URL..."
             fi
           done
           
           if [ "$URL_FOUND" = false ]; then
-            echo "WARNING: URL not detected yet, but tunnel is running..."
-            echo "You may need to check the tunnel status manually."
-            echo "Your tunnel name is: $TUNNEL_NAME"
+            echo "WARNING: URL not detected after ${MAX_WAIT_TIME}s"
+            echo "=== Current Log Output ==="
+            cat "$LOG_FILE" 2>/dev/null || echo "No log file"
+            echo "=== Current Error Output ==="
+            cat "$ERROR_FILE" 2>/dev/null || echo "No error file"
+            echo ""
+            echo "Tunnel name: $TUNNEL_NAME"
+            echo "You may need to authenticate manually"
           fi
           
-          # Keep the job alive
-          echo -e "\nKeeping tunnel alive. Press Ctrl+C in Actions to stop."
-          echo "Monitoring tunnel process (PID: $TUNNEL_PID)...\n"
+          echo ""
+          echo "Keeping tunnel alive. Monitor this action to see status."
+          echo "To stop: Cancel the workflow run"
+          echo ""
           
-          # Keep the main process running to keep the job alive
-          # while simultaneously monitoring the background tunnel process.
+          # Keep the job alive and show periodic updates
           while kill -0 "$TUNNEL_PID" 2>/dev/null; do
             sleep 60
+            echo "[$(date +'%H:%M:%S')] Tunnel is running (PID: $TUNNEL_PID)..."
             
-            # Show periodic updates (optional, for visibility)
+            # Show any new content (last 5 lines)
             if [ -f "$LOG_FILE" ]; then
-                # Get the latest content for visibility (basic for bash)
-                echo "[$(date +'%H:%M:%S')] Tunnel is running..."
+              tail -n 5 "$LOG_FILE" 2>/dev/null | grep -v "^$" || true
             fi
           done
           
           echo "Tunnel process has ended."
+          cat "$LOG_FILE" 2>/dev/null
+          cat "$ERROR_FILE" 2>/dev/null
           exit 1
         shell: bash
         env:
-          # Your VSCODE_PAT secret is used here for authentication with VS Code's service
           GITHUB_TOKEN: ${{ secrets.VSCODE_PAT }}
