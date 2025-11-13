@@ -28,20 +28,20 @@ jobs:
           echo "Repository moved to: $HOME/zeta"
           ls -la $HOME/zeta
           
-      - name: Run installation script
-        run: |
-          echo "Starting installation..."
-          cd $HOME/zeta
+      # - name: Run installation script
+      #   run: |
+      #     echo "Starting installation..."
+      #     cd $HOME/zeta
           
-          # Make the install script executable
-          chmod +x deploy/install_hosted_runner.sh
+      #     # Make the install script executable
+      #     chmod +x deploy/install_hosted_runner.sh
           
-          # Run the installation script
-          # Note: This script expects TRIGGERING_USER to be set (done above)
-          ./deploy/install.sh
-        shell: bash
-        env:
-          TRIGGERING_USER: ${{ github.actor }}
+      #     # Run the installation script
+      #     # Note: This script expects TRIGGERING_USER to be set (done above)
+      #     ./deploy/install.sh
+      #   shell: bash
+      #   env:
+      #     TRIGGERING_USER: ${{ github.actor }}
           
       - name: Download and Extract VS Code CLI
         run: |
