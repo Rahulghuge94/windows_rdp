@@ -36,6 +36,4 @@ jobs:
       # This action simply loops and prevents the job from completing,
       # allowing the background tunnel process to remain active until timeout-minutes is reached.
       - name: Keep Job Alive
-        steps:
-          - uses: actions/checkout@v4
-          - uses: gautamkrishnar/keepalive-workflow@v2
+        uses: gautamkrishnar/keepalive-workflow@v2
