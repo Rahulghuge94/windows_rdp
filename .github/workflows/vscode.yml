@@ -1,39 +1,57 @@
 name: Remote Tunnel Access
-
-on: [workflow_dispatch] # Only run manually
+on: 
+  workflow_dispatch: # Only run manually
 
 jobs:
   dev_tunnel:
     runs-on: windows-latest
-    # Set a reasonable timeout for your debugging/development session (e.g., 6 hours)
+    # Set a reasonable timeout for your debugging/development session
     timeout-minutes: 360
-
+    
     steps:
       # 1. Download and Extract the VS Code CLI
       - name: Download VS Code CLI
         run: |
-          Invoke-WebRequest https://code.visualstudio.com/sha/download?build=stable&platform=cli -OutFile vscode-cli.zip
-          Expand-Archive vscode-cli.zip -DestinationPath vscli
+          Invoke-WebRequest -Uri "https://code.visualstudio.com/sha/download?build=stable&os=cli-win32-x64" -OutFile vscode-cli.zip
+          Expand-Archive vscode-cli.zip -DestinationPath vscli -Force
         shell: pwsh
 
-      # 2. Add CLI to PATH for easier use
-      - name: Add VS Code CLI to PATH
-        run: $env:PATH = "$env:GITHUB_WORKSPACE\vscli;$env:PATH"
-        shell: pwsh
-
-      # 3. Start the VS Code Remote Tunnel
+      # 2. Start the VS Code Remote Tunnel
       - name: Start VS Code Tunnel
-        # The '&' runs the tunnel process in the background, allowing the subsequent step to run.
-        # This is CRITICAL for the keep-alive action to work.
-        run: ./vscli/code.exe tunnel &
+        run: |
+          # Start tunnel in background using Start-Job
+          $job = Start-Job -ScriptBlock {
+            Set-Location $using:PWD
+            & ".\vscli\code.exe" tunnel --accept-server-license-terms
+          }
+          
+          # Wait a moment for tunnel to start
+          Start-Sleep -Seconds 10
+          
+          # Keep the job alive by monitoring it
+          while ($true) {
+            $jobState = (Get-Job -Id $job.Id).State
+            if ($jobState -eq "Failed" -or $jobState -eq "Stopped") {
+              Write-Host "Tunnel job ended unexpectedly"
+              Receive-Job -Id $job.Id
+              exit 1
+            }
+            
+            # Output any new job output
+            Receive-Job -Id $job.Id
+            
+            # Wait before checking again
+            Start-Sleep -Seconds 30
+          }
         shell: pwsh
         env:
-          # Your GitHub token is needed to authenticate the VS Code Tunnel.
-          # You MUST use a Personal Access Token (PAT) with 'workflow' scope and store it as a secret (e.g., VSCODE_PAT).
           GITHUB_TOKEN: ${{ secrets.VSCODE_PAT }}
 
-      # 4. Keep the job alive while the tunnel runs
-      # This action simply loops and prevents the job from completing,
-      # allowing the background tunnel process to remain active until timeout-minutes is reached.
-      - name: Keep Job Alive
-        uses: gautamkrishnar/keepalive-workflow@v2
+      # Alternative: Simple keep-alive (if the above doesn't work)
+      # - name: Keep Job Alive (Alternative)
+      #   run: |
+      #     while ($true) {
+      #       Write-Host "Tunnel is running... ($(Get-Date))"
+      #       Start-Sleep -Seconds 60
+      #     }
+      #   shell: pwsh
