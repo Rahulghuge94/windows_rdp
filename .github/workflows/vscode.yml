@@ -19,18 +19,26 @@ jobs:
       # 2. Start the VS Code Remote Tunnel
       - name: Start VS Code Tunnel
         run: |
+          Write-Host "Starting VS Code Tunnel..."
+          Write-Host "GITHUB_TOKEN is set: $($env:GITHUB_TOKEN.Length -gt 0)"
+          
           # Create a log file for the tunnel output
           $logFile = "tunnel.log"
           
+          # Try running with explicit authentication
+          # Use --name to set a custom tunnel name (easier to find)
+          $tunnelName = "gh-actions-$($env:GITHUB_RUN_ID)"
+          
           # Start tunnel in background and redirect output to log file
           $process = Start-Process -FilePath ".\vscli\code.exe" `
-            -ArgumentList "tunnel", "--accept-server-license-terms" `
+            -ArgumentList "tunnel", "--accept-server-license-terms", "--name", $tunnelName `
             -NoNewWindow `
             -PassThru `
             -RedirectStandardOutput $logFile `
             -RedirectStandardError "tunnel-error.log"
           
           Write-Host "Tunnel process started with PID: $($process.Id)"
+          Write-Host "Tunnel name: $tunnelName"
           Write-Host "Waiting for tunnel to initialize..."
           
           # Wait and monitor the log file for the URL
@@ -57,9 +65,19 @@ jobs:
               }
             }
             
+            # Also check error log
+            if (Test-Path "tunnel-error.log") {
+              $errorContent = Get-Content "tunnel-error.log" -Raw
+              if ($errorContent) {
+                Write-Host "`n--- Error Output ---"
+                Write-Host $errorContent
+                Write-Host "--- End Errors ---`n"
+              }
+            }
+            
             # Check if process is still running
             if ($process.HasExited) {
-              Write-Host "ERROR: Tunnel process exited unexpectedly!"
+              Write-Host "ERROR: Tunnel process exited unexpectedly with code: $($process.ExitCode)"
               if (Test-Path "tunnel-error.log") {
                 Write-Host "`n--- Error Log ---"
                 Get-Content "tunnel-error.log"
@@ -70,6 +88,8 @@ jobs:
           
           if (-not $urlFound) {
             Write-Host "WARNING: URL not detected yet, but tunnel is running..."
+            Write-Host "You may need to check the tunnel status manually."
+            Write-Host "Your tunnel name is: $tunnelName"
           }
           
           # Keep the job alive
