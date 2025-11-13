@@ -27,7 +27,8 @@ jobs:
           
           # Try running with explicit authentication
           # Use --name to set a custom tunnel name (easier to find)
-          $tunnelName = "gh-actions-$($env:GITHUB_RUN_ID)"
+          $runIdShort = $env:GITHUB_RUN_ID.Substring([Math]::Max(0, $env:GITHUB_RUN_ID.Length - 8))
+          $tunnelName = "gh-$runIdShort"
           
           # Start tunnel in background and redirect output to log file
           $process = Start-Process -FilePath ".\vscli\code.exe" `
