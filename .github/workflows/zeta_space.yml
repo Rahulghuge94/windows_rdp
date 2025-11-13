@@ -10,6 +10,9 @@ jobs:
     timeout-minutes: 360
     
     steps:
+      - name: Set TRIGGERING_USER environment variable
+        run: echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
+        
       # 2. Clone the private repository
       # Uses the default GITHUB_TOKEN (or an explicit token if needed)
       - name: Checkout private repository
