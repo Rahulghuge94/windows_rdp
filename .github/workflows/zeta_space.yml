@@ -21,15 +21,15 @@ jobs:
           repository: Rahulghuge94/zeta 
           token: ${{ secrets.VSCODE_PAT }}
           
-      # 3. Open project and run install script
-      # This runs the script from the cloned project root.
-      - name: Run deploy/install.sh script
-        run: |
-          # Make sure the script is executable, then run it.
-          chmod +x deploy/install.sh
-          ./deploy/install.sh
-        # The default shell on ubuntu-latest is 'bash'
-        shell: bash
+      # # 3. Open project and run install script
+      # # This runs the script from the cloned project root.
+      # - name: Run deploy/install.sh script
+      #   run: |
+      #     # Make sure the script is executable, then run it.
+      #     chmod +x deploy/install.sh
+      #     ./deploy/install.sh
+      #   # The default shell on ubuntu-latest is 'bash'
+      #   shell: bash
 
       # 4. Download and Extract the VS Code CLI (Linux/bash equivalent)
       - name: Download VS Code CLI
