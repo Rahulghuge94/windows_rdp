@@ -19,30 +19,81 @@ jobs:
       # 2. Start the VS Code Remote Tunnel
       - name: Start VS Code Tunnel
         run: |
-          # Start tunnel in background using Start-Job
-          $job = Start-Job -ScriptBlock {
-            Set-Location $using:PWD
-            & ".\vscli\code.exe" tunnel --accept-server-license-terms
-          }
+          # Create a log file for the tunnel output
+          $logFile = "tunnel.log"
           
-          # Wait a moment for tunnel to start
-          Start-Sleep -Seconds 10
+          # Start tunnel in background and redirect output to log file
+          $process = Start-Process -FilePath ".\vscli\code.exe" `
+            -ArgumentList "tunnel", "--accept-server-license-terms" `
+            -NoNewWindow `
+            -PassThru `
+            -RedirectStandardOutput $logFile `
+            -RedirectStandardError "tunnel-error.log"
           
-          # Keep the job alive by monitoring it
-          while ($true) {
-            $jobState = (Get-Job -Id $job.Id).State
-            if ($jobState -eq "Failed" -or $jobState -eq "Stopped") {
-              Write-Host "Tunnel job ended unexpectedly"
-              Receive-Job -Id $job.Id
-              exit 1
+          Write-Host "Tunnel process started with PID: $($process.Id)"
+          Write-Host "Waiting for tunnel to initialize..."
+          
+          # Wait and monitor the log file for the URL
+          $urlFound = $false
+          $maxWaitTime = 120 # Wait up to 2 minutes for URL
+          $elapsed = 0
+          
+          while (-not $urlFound -and $elapsed -lt $maxWaitTime) {
+            Start-Sleep -Seconds 5
+            $elapsed += 5
+            
+            if (Test-Path $logFile) {
+              $logContent = Get-Content $logFile -Raw
+              Write-Host "`n--- Tunnel Output ---"
+              Write-Host $logContent
+              Write-Host "--- End Output ---`n"
+              
+              # Check if URL is in the output
+              if ($logContent -match "vscode\.dev/tunnel/") {
+                $urlFound = $true
+                Write-Host "`n=========================================="
+                Write-Host "TUNNEL IS READY!"
+                Write-Host "=========================================="
+              }
             }
             
-            # Output any new job output
-            Receive-Job -Id $job.Id
-            
-            # Wait before checking again
-            Start-Sleep -Seconds 30
+            # Check if process is still running
+            if ($process.HasExited) {
+              Write-Host "ERROR: Tunnel process exited unexpectedly!"
+              if (Test-Path "tunnel-error.log") {
+                Write-Host "`n--- Error Log ---"
+                Get-Content "tunnel-error.log"
+              }
+              exit 1
+            }
           }
+          
+          if (-not $urlFound) {
+            Write-Host "WARNING: URL not detected yet, but tunnel is running..."
+          }
+          
+          # Keep the job alive
+          Write-Host "`nKeeping tunnel alive. Press Ctrl+C in Actions to stop."
+          Write-Host "Monitoring tunnel process (PID: $($process.Id))...`n"
+          
+          while (-not $process.HasExited) {
+            Start-Sleep -Seconds 30
+            
+            # Show periodic updates
+            if (Test-Path $logFile) {
+              $newContent = Get-Content $logFile -Raw
+              if ($newContent.Length -gt $logContent.Length) {
+                $logContent = $newContent
+                Write-Host "[$(Get-Date -Format 'HH:mm:ss')] New tunnel output:"
+                Write-Host $logContent
+              } else {
+                Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Tunnel is running..."
+              }
+            }
+          }
+          
+          Write-Host "Tunnel process has ended."
+          exit 1
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.VSCODE_PAT }}
