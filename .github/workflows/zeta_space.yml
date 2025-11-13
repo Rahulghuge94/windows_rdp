@@ -35,7 +35,7 @@ jobs:
       - name: Download VS Code CLI
         run: |
           # Download Linux x64 CLI
-          curl -L "https://code.visualstudio.com/sha/download?build=stable&os=cli-linux-x64" -o vscode-cli.tar.gz
+          curl -L "https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-x64" -o vscode-cli.tar.gz
           # Extract to vscli directory
           mkdir -p vscli
           tar -xzf vscode-cli.tar.gz -C vscli
