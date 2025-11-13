@@ -8,14 +8,40 @@ jobs:
     timeout-minutes: 360
     
     steps:
-      - name: Set TRIGGERING_USER environment variable
-        run: echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
+      - name: Set environment variables
+        run: |
+          echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
+          echo "APP_DIR=$HOME/zeta" >> $GITHUB_ENV
+          echo "QUESTDB_DIR=$HOME/questdb" >> $GITHUB_ENV
         
       - name: Checkout private repository
         uses: actions/checkout@v4
         with:
           repository: Rahulghuge94/zeta 
           token: ${{ secrets.VSCODE_PAT }}
+          path: zeta
+          
+      - name: Move repository to home directory
+        run: |
+          # Move the cloned repo to the expected location
+          mv zeta $HOME/zeta
+          echo "Repository moved to: $HOME/zeta"
+          ls -la $HOME/zeta
+          
+      - name: Run installation script
+        run: |
+          echo "Starting installation..."
+          cd $HOME/zeta
+          
+          # Make the install script executable
+          chmod +x deploy/install.sh
+          
+          # Run the installation script
+          # Note: This script expects TRIGGERING_USER to be set (done above)
+          ./deploy/install.sh
+        shell: bash
+        env:
+          TRIGGERING_USER: ${{ github.actor }}
           
       - name: Download and Extract VS Code CLI
         run: |
