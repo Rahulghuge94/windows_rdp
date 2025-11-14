@@ -16,9 +16,9 @@ jobs:
         uses: AnimMouse/setup-cloudflared/tunnel@v2
         with:
           # Use an ephemeral quick tunnel or a named tunnel with token/credentials
-          url: http://localhost:8080 
-          # You might use secrets here for persistent tunnels
-          # cloudflare_tunnel_credential: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
+          url: http://localhost:8080
+          cloudflare_tunnel_credential: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
+          cloudflare_tunnel_configuration: ${{ vars.CLOUDFLARE_TUNNEL_CONFIGURATION }}
           
       - name: Run external test against tunnel URL
         run: curl ${{ steps.cloudflared.outputs.url }}
