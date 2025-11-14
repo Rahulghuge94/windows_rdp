@@ -1,68 +1,34 @@
 name: Deploy with Cloudflare Tunnel
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  # push:
+  #   branches: [ main ]
+  # pull_request:
+  #   branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-with-cloudflared-action:
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install Cloudflare Tunnel (cloudflared)
-      run: |
-        # Download and install cloudflared
-        wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-        sudo dpkg -i cloudflared-linux-amd64.deb
-        cloudflared --version
-    
     - name: Start your application
       run: |
-        # Example: Start a simple web server on port 8080
-        # Replace this with your actual application startup command
+        # Start your application on a specific port
         python3 -m http.server 8080 &
         sleep 5
         echo "Application started on port 8080"
     
-    - name: Start Cloudflare Tunnel
-      env:
-        CLOUDFLARE_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
-      run: |
-        # Start tunnel in background
-        cloudflared tunnel --no-autoupdate run --token $CLOUDFLARE_TUNNEL_TOKEN &
-        TUNNEL_PID=$!
-        echo "TUNNEL_PID=$TUNNEL_PID" >> $GITHUB_ENV
-        
-        # Wait for tunnel to establish
-        echo "Waiting for tunnel to establish..."
-        sleep 10
-        
-        echo "Tunnel is running with PID: $TUNNEL_PID"
+    - name: Setup Cloudflare Tunnel
+      uses: cloudflare/cloudflared-action@1.0.0
+      with:
+        token: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
     
-    - name: Run your tests or deployment tasks
+    - name: Run your tasks
       run: |
-        # Your tunnel is now active
-        # Run tests, deployments, or any other tasks
-        echo "Tunnel is active - running tasks..."
-        
-        # Example: curl your service through the tunnel
-        # curl https://your-tunnel-subdomain.trycloudflare.com
-        
-        # Add your actual tasks here
+        echo "Tunnel is now active!"
+        # Your tasks here - the tunnel runs in the background
         sleep 30
-    
-    - name: Stop Cloudflare Tunnel
-      if: always()
-      run: |
-        if [ ! -z "$TUNNEL_PID" ]; then
-          echo "Stopping tunnel with PID: $TUNNEL_PID"
-          kill $TUNNEL_PID || true
-        fi
-        # Kill any remaining cloudflared processes
-        pkill cloudflared || true
