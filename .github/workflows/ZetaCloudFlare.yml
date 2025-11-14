@@ -22,11 +22,11 @@ jobs:
         sleep 5
         echo "Application started on port 8080"
     
-    - name: Setup Cloudflare Tunnel
-      uses: cloudflare/cloudflared-action@1.0.0
+    - name: Setup cloudflared tunnel
+      uses: AnimMouse/setup-cloudflared/tunnel@v2
       with:
-        token: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
-    
+        cloudflare_tunnel_credential: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
+      
     - name: Run your tasks
       run: |
         echo "Tunnel is now active!"
