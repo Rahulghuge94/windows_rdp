@@ -1,0 +1,24 @@
+name: ZetaCloudFlare
+on:
+  workflow_dispatch: # Only run manually
+
+jobs:
+  test_with_tunnel:
+    runs-on: ubuntu-latest # Or your self-hosted runner label
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Start local server
+        run: python -m http.server 8080 & # Start server in background
+        
+      - name: Setup cloudflared and create tunnel
+        uses: AnimMouse/setup-cloudflared/tunnel@v2
+        with:
+          # Use an ephemeral quick tunnel or a named tunnel with token/credentials
+          url: http://localhost:8080 
+          # You might use secrets here for persistent tunnels
+          # cloudflare_tunnel_credential: ${{ secrets.CF_TUNNEL_CREDENTIAL }}
+          
+      - name: Run external test against tunnel URL
+        run: curl ${{ steps.cloudflared.outputs.url }}
