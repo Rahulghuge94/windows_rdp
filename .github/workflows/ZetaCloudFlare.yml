@@ -201,9 +201,9 @@ jobs:
           
           # 1. Copy potential changes from App repo back to Backup repo
           echo "Copying updated files from app to backup directory..."
-          cp "${{ env.APP_DIR }}/zeta_python/databases/strategies.db" "${{ env.BACKUP_DIR }}/strategies.db"
-          cp "${{ env.APP_DIR }}/zeta_python/databases/users_database.db" "${{ env.BACKUP_DIR }}/users_database.db"
-          cp "${{ env.APP_DIR }}/.env" "${{ env.BACKUP_DIR }}/.env"
+          sudo cp "$HOME/zeta/zeta_python/databases/strategies.db" "$HOME/ZetaAppFilesBackup/strategies.db"
+          sudo cp "$HOME/zeta/zeta_python/databases/users_database.db" "$HOME/ZetaAppFilesBackup/users_database.db"
+          sudo cp "$HOME/zeta/.env" "$HOME/ZetaAppFilesBackup/.env"
           
           # 2. Navigate into the repository directory
           cd ${{ env.BACKUP_DIR }}
