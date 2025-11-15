@@ -206,7 +206,7 @@ jobs:
           sudo cp "$HOME/zeta/.env" "$HOME/ZetaAppFilesBackup/.env"
           
           # 2. Navigate into the repository directory
-          cd ${{ env.BACKUP_DIR }}
+          cd "$HOME/ZetaAppFilesBackup
           
           # 3. Configure Git for the push
           git config user.name "GitHub Actions Backup Bot"
