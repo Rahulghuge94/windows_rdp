@@ -70,6 +70,7 @@ jobs:
           # Add to PATH
           echo "$(dirname $CODE_BIN)" >> $GITHUB_PATH
       - name:  Push back to Repo
+        if: always()
         run: |
           echo "Putting Files back in repo."
           git config user.name "GitHub Actions Backup Bot"
