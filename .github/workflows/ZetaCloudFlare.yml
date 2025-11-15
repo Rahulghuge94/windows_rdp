@@ -69,16 +69,7 @@ jobs:
           
           # Add to PATH
           echo "$(dirname $CODE_BIN)" >> $GITHUB_PATH
-      - name:  Push back to Repo
-        if: always()
-        run: |
-          echo "Putting Files back in repo."
-          git config user.name "GitHub Actions Backup Bot"
-          git config user.email "actions@github.com"
-          cp "$HOME/zeta/zeta_python/databases/strategies.db" "$HOME/ZetaAppFilesBackup/strategies.db"
-          cp "$HOME/zeta/zeta_python/databases/users_database.db" "$HOME/ZetaAppFilesBackup/users_database.db"
-          cp "$HOME/zeta/.env" "$HOME/ZetaAppFilesBackup/.env"
-          git push "https://x-access-token:${{ secrets.VSCODE_PAT }}@github.com/Rahulghuge94/ZetaAppFilesBackup.git" main
+
       - name: Start VS Code Tunnel
         run: |
           echo "Starting VS Code Tunnel..."
@@ -202,3 +193,14 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.VSCODE_PAT }}
+          
+      - name:  Push back to Repo
+        if: always()
+        run: |
+          echo "Putting Files back in repo."
+          git config user.name "GitHub Actions Backup Bot"
+          git config user.email "actions@github.com"
+          cp "$HOME/zeta/zeta_python/databases/strategies.db" "$HOME/ZetaAppFilesBackup/strategies.db"
+          cp "$HOME/zeta/zeta_python/databases/users_database.db" "$HOME/ZetaAppFilesBackup/users_database.db"
+          cp "$HOME/zeta/.env" "$HOME/ZetaAppFilesBackup/.env"
+          git push "https://x-access-token:${{ secrets.VSCODE_PAT }}@github.com/Rahulghuge94/ZetaAppFilesBackup.git" main
