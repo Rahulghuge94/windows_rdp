@@ -13,20 +13,37 @@ jobs:
           echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
           echo "APP_DIR=$HOME/zeta" >> $GITHUB_ENV
           echo "QUESTDB_DIR=$HOME/questdb" >> $GITHUB_ENV
+
+      - name: Checkout private repository1
+        uses: actions/checkout@v4
+        with:
+          repository: Rahulghuge94/ZetaAppFilesBackup 
+          token: ${{ secrets.VSCODE_PAT }}
+          path: ZetaAppFilesBackup
           
-      - name: Checkout private repository
+      - name: Move repository to home directory1
+        run: |
+          # Move the cloned repo to the expected location
+          mv ZetaAppFilesBackup $HOME/ZetaAppFilesBackup
+          echo "Repository moved to: $HOME/ZetaAppFilesBackup"
+          ls -la $HOME/ZetaAppFilesBackup
+          
+      - name: Checkout private repository2
         uses: actions/checkout@v4
         with:
           repository: Rahulghuge94/zeta 
           token: ${{ secrets.VSCODE_PAT }}
           path: zeta
-          
-      - name: Move repository to home directory
+
+      - name: Move repository to home directory2
         run: |
           # Move the cloned repo to the expected location
           mv zeta $HOME/zeta
           echo "Repository moved to: $HOME/zeta"
           ls -la $HOME/zeta
+          cp "$HOME/ZetaAppFilesBackup/strategies.db" "$HOME/zeta/zeta_python/databases/strategies.db"
+          cp "$HOME/ZetaAppFilesBackup/users_database.db" "$HOME/zeta/zeta_python/databases/users_database.db"
+          cp "$HOME/ZetaAppFilesBackup/.env" "$HOME/zeta/.env"
           chmod +x $HOME/zeta/deploy/tunnel/start_tunnel.sh
           chmod +x $HOME/zeta/deploy/install_hosted_runner.sh
           bash "$HOME/zeta/deploy/install_hosted_runner.sh"
