@@ -41,6 +41,7 @@ jobs:
           mv zeta $HOME/zeta
           echo "Repository moved to: $HOME/zeta"
           ls -la $HOME/zeta
+          cp "$HOME/ZetaAppFilesBackup/instruments.db" "$HOME/zeta/zeta_python/databases/instruments.db"
           cp "$HOME/ZetaAppFilesBackup/strategies.db" "$HOME/zeta/zeta_python/databases/strategies.db"
           cp "$HOME/ZetaAppFilesBackup/users_database.db" "$HOME/zeta/zeta_python/databases/users_database.db"
           cp "$HOME/ZetaAppFilesBackup/.env" "$HOME/zeta/.env"
@@ -201,25 +202,26 @@ jobs:
           
           # 1. Copy potential changes from App repo back to Backup repo
           echo "Copying updated files from app to backup directory..."
-          sudo cp "$HOME/zeta/zeta_python/databases/strategies.db" "$HOME/ZetaAppFilesBackup/strategies.db"
-          sudo cp "$HOME/zeta/zeta_python/databases/users_database.db" "$HOME/ZetaAppFilesBackup/users_database.db"
-          sudo cp "$HOME/zeta/.env" "$HOME/ZetaAppFilesBackup/.env"
+          cp "$HOME/zeta/zeta_python/databases/strategies.db" "$HOME/ZetaAppFilesBackup/strategies.db"
+          cp "$HOME/zeta/zeta_python/databases/users_database.db" "$HOME/ZetaAppFilesBackup/users_database.db"
+          cp "$HOME/zeta/zeta_python/databases/instruments.db" "$HOME/ZetaAppFilesBackup/instruments.db"
+          cp "$HOME/zeta/.env" "$HOME/ZetaAppFilesBackup/.env"
           
           # 2. Navigate into the repository directory
           cd "$HOME/ZetaAppFilesBackup
           
           # 3. Configure Git for the push
-          git config user.name "GitHub Actions Backup Bot"
-          git config user.email "actions@github.com"
-          
+          # git config user.name "GitHub Actions Backup Bot"
+          # git config user.email "actions@github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.VSCODE_PAT }}@github.com/Rahulghuge94/ZetaAppFilesBackup.git"
           # 4. Check for changes, commit, and push
           if git status --porcelain | grep -q .; then
             echo "Changes detected in backup files. Committing and pushing..."
-            git add .
+            git add -A
             git commit -m "Backup of updated databases and .env file."
             
             # Push changes using the PAT for authentication
-            git push "https://x-access-token:${{ secrets.VSCODE_PAT }}@github.com/Rahulghuge94/ZetaAppFilesBackup.git" HEAD:main
+            git push
             echo "Successfully pushed changes to ZetaAppFilesBackup."
           else
             echo "No changes detected in backup files. No push necessary."
