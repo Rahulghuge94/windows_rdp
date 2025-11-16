@@ -1,7 +1,9 @@
 name: Deploy with Cloudflare Tunnel
 on:
   workflow_dispatch: # Only run manually
-
+  schedule:
+    # Runs daily at 03:50 UTC
+    - cron: "50 3 * * *"
 jobs:
   dev_tunnel:
     runs-on: ubuntu-latest
