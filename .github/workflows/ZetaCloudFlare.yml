@@ -211,8 +211,8 @@ jobs:
           cd "$HOME/ZetaAppFilesBackup"
           
           # 3. Configure Git for the push
-          # git config user.name "GitHub Actions Backup Bot"
-          # git config user.email "actions@github.com"
+          git config user.name "GitHub Actions Backup Bot"
+          git config user.email "actions@github.com"
           git remote set-url origin "https://x-access-token:${{ secrets.VSCODE_PAT }}@github.com/Rahulghuge94/ZetaAppFilesBackup.git"
           # 4. Check for changes, commit, and push
           if git status --porcelain | grep -q .; then
