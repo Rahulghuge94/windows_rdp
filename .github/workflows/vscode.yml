@@ -15,8 +15,44 @@ jobs:
           Invoke-WebRequest -Uri "https://code.visualstudio.com/sha/download?build=stable&os=cli-win32-x64" -OutFile vscode-cli.zip
           Expand-Archive vscode-cli.zip -DestinationPath vscli -Force
         shell: pwsh
+      # 2. get remote repo 1
+      - name: Checkout private repository 1
+        uses: actions/checkout@v4
+        with:
+          repository: Rahulghuge94/ZetaAppFilesBackup 
+          token: ${{ secrets.VSCODE_PAT }}
+          path: ZetaAppFilesBackup
+          
+      - name: Move repository to home directory 1
+        run: |
+          Move-Item -Path "./ZetaAppFilesBackup" -Destination "$env:USERPROFILE\ZetaAppFilesBackup" -Force
+          Write-Host "Repository moved to: $env:USERPROFILE\ZetaAppFilesBackup"
+          Get-ChildItem -Path "$env:USERPROFILE\ZetaAppFilesBackup" -Force
+        shell: pwsh
+          
+      # 3 Get remote repo 2
+      - name: Checkout private repository 2
+        uses: actions/checkout@v4
+        with:
+          repository: Rahulghuge94/zeta 
+          token: ${{ secrets.VSCODE_PAT }}
+          path: zeta
 
-      # 2. Start the VS Code Remote Tunnel
+      - name: Move repository to home directory 2 and copy files
+        run: |
+          Move-Item -Path "./zeta" -Destination "$env:USERPROFILE\zeta" -Force
+          Write-Host "Repository moved to: $env:USERPROFILE\zeta"
+          Get-ChildItem -Path "$env:USERPROFILE\zeta" -Force
+          Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\instruments.db" "$env:USERPROFILE\zeta\zeta_python\databases\instruments.db" -Force
+          Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\strategies.db" "$env:USERPROFILE\zeta\zeta_python\databases\strategies.db" -Force
+          Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\users_database.db" "$env:USERPROFILE\zeta\zeta_python\databases\users_database.db" -Force
+          Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\.env" "$env:USERPROFILE\zeta\.env" -Force
+          & "$env:USERPROFILE\zeta\deploy\install_hosted_runner.bat"
+          # If you have a .ps1 for tunnel, use it:
+          & "$env:USERPROFILE\zeta\deploy\tunnel\start_tunnel.ps1"
+        shell: pwsh
+      
+      # 4. Start the VS Code Remote Tunnel
       - name: Start VS Code Tunnel
         run: |
           Write-Host "Starting VS Code Tunnel..."
