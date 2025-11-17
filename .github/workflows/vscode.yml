@@ -47,7 +47,7 @@ jobs:
           Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\strategies.db" "$env:USERPROFILE\zeta\zeta_python\databases\strategies.db" -Force
           Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\users_database.db" "$env:USERPROFILE\zeta\zeta_python\databases\users_database.db" -Force
           Copy-Item -Path "$env:USERPROFILE\ZetaAppFilesBackup\.env" "$env:USERPROFILE\zeta\.env" -Force
-          & "$env:USERPROFILE\zeta\deploy\install_hosted_runner.bat"
+          & "$env:USERPROFILE\zeta\deploy\install_hosted_runner.ps1"
           # If you have a .ps1 for tunnel, use it:
           & "$env:USERPROFILE\zeta\deploy\tunnel\start_tunnel.ps1"
         shell: pwsh
