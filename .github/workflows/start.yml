@@ -24,3 +24,17 @@ jobs:
     - name: Create Tunnel
       run: |
         & "C:\cloudflared_files\cloudflared.exe" service install ${{ secrets.TUNNEL_SECRET }}
+    - name: Keep Tunnel Running
+      run: |
+        $timeoutSeconds = 21,600  # 30 minutes
+          $startTime = Get-Date
+
+          Write-Host "Keeping job alive for $timeoutSeconds seconds. Press 'Cancel' to stop early."
+          
+          while (((Get-Date) - $startTime).TotalSeconds -lt $timeoutSeconds) {
+              Start-Sleep -Seconds 60  # Wait for 60 seconds
+              $elapsed = [Math]::Round(((Get-Date) - $startTime).TotalSeconds)
+              Write-Host "Still connected. Elapsed time: $elapsed seconds."
+          }
+
+          Write-Host "Timeout reached. Shutting down the runner."
