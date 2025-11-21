@@ -15,7 +15,6 @@ jobs:
         Invoke-WebRequest -Uri https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe
         mkdir -p "C:\cloudflared_files"
         Move-Item cloudflared.exe "C:\cloudflared_files"
-        & "C:\cloudflared_files\cloudflared.exe" service install ${{ secrets.TUNNEL_SECRET }}
     - name: Enable TS
       run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
     - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
