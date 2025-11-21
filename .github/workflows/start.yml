@@ -26,7 +26,7 @@ jobs:
         & "C:\cloudflared_files\cloudflared.exe" service install ${{ secrets.TUNNEL_SECRET }}
     - name: Keep Tunnel Running
       run: |
-        $timeoutSeconds = 21,600  # 30 minutes
+        $timeoutSeconds = 21600  # 30 minutes
           $startTime = Get-Date
 
           Write-Host "Keeping job alive for $timeoutSeconds seconds. Press 'Cancel' to stop early."
