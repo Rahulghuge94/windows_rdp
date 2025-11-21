@@ -1,24 +1,22 @@
-name: WINDOWS RDP
-
-on:
-  workflow_dispatch:
+name: Windows-RDP
+on: 
+  workflow_dispatch: # Only run manually
 
 jobs:
-  rdp-session:
-    # Use a Windows runner for RDP
+  dev_tunnel:
     runs-on: windows-latest
-
+    # Set a reasonable timeout for your debugging/development session
+    timeout-minutes: 360
     env:
       # Define the path where Cloudflared files will live
       TUNNEL_DIR: C:\cloudflared_files
-      
     steps:
-      - name: 🔐 Set RDP Password for 'runneradmin'
+      - name: Set RDP Password for 'runneradmin'
         # The default user on Windows runners is 'runneradmin'
         run: net user runneradmin ${{ secrets.RDP_PASSWORD }}
         shell: powershell
 
-      - name: 🖥️ Enable RDP Service and Firewall
+      - name: Enable RDP Service and Firewall
         run: |
           # 1. Enable RDP service
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
@@ -27,7 +25,7 @@ jobs:
           echo "RDP has been enabled."
         shell: powershell
         
-      - name: 📥 Download and Install Cloudflared
+      - name: Download and Install Cloudflared
         # Download the executable and place it in a location accessible by the PATH or directly
         run: |
           Invoke-WebRequest -Uri https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -OutFile cloudflared.exe
@@ -35,19 +33,8 @@ jobs:
           Move-Item cloudflared.exe $env:TUNNEL_DIR
           echo "Cloudflared installed to $env:TUNNEL_DIR"
         shell: powershell
-        
-      - name: 📝 Create Config and Credential Files
-        run: |
-          # 1. Decode and create the config.yaml file
-          [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("${{ secrets.CLOUDFLARE_TUNNEL_CONFIG }}")) | Out-File "$env:TUNNEL_DIR\config.yaml"
-          
-          # 2. Decode and create the tunnel credentials JSON file
-          [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("${{ secrets.CLOUDFLARE_TUNNEL_CREDENTIAL }}")) | Out-File "$env:TUNNEL_DIR\credentials.json"
-          
-          echo "Configuration files created in $env:TUNNEL_DIR"
-        shell: powershell
 
-      - name: 🚀 Start Cloudflared Tunnel
+      - name: Start Cloudflared Tunnel
         # The -f flag keeps the process running, which keeps the GitHub job active.
         run: |
           & "$env:TUNNEL_DIR\cloudflared.exe" service install ${{ secrets.TUNNEL_SECRET }}
