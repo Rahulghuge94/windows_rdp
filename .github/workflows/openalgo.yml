@@ -1,0 +1,174 @@
+name: Deploy Openalgo
+on:
+  workflow_dispatch: # Only run manually
+  schedule:
+    # Runs daily at 03:50 UTC
+    - cron: "50 3 * * *"
+jobs:
+  dev_tunnel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+      - name: Set environment variables
+        run: |
+          echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
+          echo "APP_DIR=$HOME/zeta" >> $GITHUB_ENV
+
+      - name: Get Openalgo
+        run: |
+          git clone https://github.com/marketcalls/openalgo.git
+
+      - name: Get Cloudflared
+        run: |
+          wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+          sudo apt-get install -f
+          sudo cloudflared service install $TOKEN
+        env:
+          TOKEN: ${{ secrets.API_TOKEN }}
+  
+      - name: Download and Extract VS Code CLI
+        run: |
+          echo "Downloading VS Code CLI..."
+          mkdir -p $HOME/vscode-cli
+          cd $HOME/vscode-cli
+          wget -q https://update.code.visualstudio.com/latest/cli-linux-x64/stable -O vscode_cli.tar.gz
+          tar -xzf vscode_cli.tar.gz
+          
+          # Verify the extraction
+          ls -la
+          
+          # Find the actual code binary
+          CODE_BIN=$(find $HOME/vscode-cli -name "code" -type f | head -n 1)
+          echo "Found code binary at: $CODE_BIN"
+          
+          # Make it executable
+          chmod +x "$CODE_BIN"
+          
+          # Add to PATH
+          echo "$(dirname $CODE_BIN)" >> $GITHUB_PATH
+
+      - name: Start VS Code Tunnel
+        run: |
+          echo "Starting VS Code Tunnel..."
+          
+          # Wait for PATH to be updated
+          sleep 2
+          
+          # Verify code is available
+          which code || echo "Warning: code not in PATH, will use full path"
+          
+          LOG_FILE="tunnel.log"
+          ERROR_FILE="tunnel-error.log"
+          
+          # Set a custom tunnel name
+          RUN_ID_SHORT=$(echo $GITHUB_RUN_ID | tail -c 9)
+          TUNNEL_NAME="gh-runner-$RUN_ID_SHORT"
+          
+          echo "Tunnel name will be: $TUNNEL_NAME"
+          echo "GitHub Actor: $GITHUB_ACTOR"
+          
+          # Find code binary
+          CODE_BIN=$(which code 2>/dev/null || find $HOME/vscode-cli -name "code" -type f | head -n 1)
+          echo "Using code binary: $CODE_BIN"
+          
+          # Start tunnel with proper authentication
+          # The tunnel command will use GITHUB_TOKEN for authentication
+          nohup "$CODE_BIN" tunnel \
+            --accept-server-license-terms \
+            --name "$TUNNEL_NAME" \
+            > "$LOG_FILE" 2> "$ERROR_FILE" &
+            
+          TUNNEL_PID=$!
+          
+          echo "Tunnel process started with PID: $TUNNEL_PID"
+          echo "Waiting for tunnel to initialize..."
+          
+          URL_FOUND=false
+          MAX_WAIT_TIME=120
+          ELAPSED=0
+          
+          while [ "$URL_FOUND" = false ] && [ "$ELAPSED" -lt "$MAX_WAIT_TIME" ]; do
+            sleep 1
+            ELAPSED=$((ELAPSED + 1))
+            
+            # Check if process is still running
+            if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
+              echo "ERROR: Tunnel process exited unexpectedly."
+              echo "=== Log Output ==="
+              cat "$LOG_FILE" 2>/dev/null || echo "No log file"
+              echo "=== Error Output ==="
+              cat "$ERROR_FILE" 2>/dev/null || echo "No error file"
+              exit 1
+            fi
+            
+            if [ -f "$LOG_FILE" ]; then
+              LOG_CONTENT=$(cat "$LOG_FILE")
+              
+              # Check if URL is in the output
+              if echo "$LOG_CONTENT" | grep -q "vscode\.dev/tunnel/"; then
+                URL_FOUND=true
+                echo ""
+                echo "=========================================="
+                echo "✓ TUNNEL IS READY!"
+                echo "=========================================="
+                echo ""
+                echo "$LOG_CONTENT" | grep "vscode\.dev/tunnel/"
+                echo ""
+              elif echo "$LOG_CONTENT" | grep -qi "error\|failed"; then
+                echo "ERROR detected in log:"
+                cat "$LOG_FILE"
+                cat "$ERROR_FILE" 2>/dev/null
+                exit 1
+              fi
+            fi
+            
+            if [ -f "$ERROR_FILE" ] && [ -s "$ERROR_FILE" ]; then
+              ERROR_CONTENT=$(cat "$ERROR_FILE")
+              if echo "$ERROR_CONTENT" | grep -qi "error\|authentication"; then
+                echo "Authentication or error detected:"
+                echo "$ERROR_CONTENT"
+                exit 1
+              fi
+            fi
+            
+            if [ $((ELAPSED % 20)) -eq 0 ]; then
+              echo "[$ELAPSED seconds] Still waiting for tunnel URL..."
+            fi
+          done
+          
+          if [ "$URL_FOUND" = false ]; then
+            echo "WARNING: URL not detected after ${MAX_WAIT_TIME}s"
+            echo "=== Current Log Output ==="
+            cat "$LOG_FILE" 2>/dev/null || echo "No log file"
+            echo "=== Current Error Output ==="
+            cat "$ERROR_FILE" 2>/dev/null || echo "No error file"
+            echo ""
+            echo "Tunnel name: $TUNNEL_NAME"
+            echo "You may need to authenticate manually"
+          fi
+          
+          echo ""
+          echo "Keeping tunnel alive. Monitor this action to see status."
+          echo "To stop: Cancel the workflow run"
+          echo ""
+          
+          # Keep the job alive and show periodic updates
+          while kill -0 "$TUNNEL_PID" 2>/dev/null; do
+            sleep 60
+            echo "[$(date +'%H:%M:%S')] Tunnel is running (PID: $TUNNEL_PID)..."
+            
+            # Show any new content (last 5 lines)
+            if [ -f "$LOG_FILE" ]; then
+              tail -n 5 "$LOG_FILE" 2>/dev/null | grep -v "^$" || true
+            fi
+          done
+          
+          echo "Tunnel process has ended."
+          cat "$LOG_FILE" 2>/dev/null
+          cat "$ERROR_FILE" 2>/dev/null
+          exit 1
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.VSCODE_PAT }}
