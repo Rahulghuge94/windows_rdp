@@ -28,9 +28,9 @@ jobs:
           # Update package list and install
           sudo apt-get update
           sudo apt-get install -y cloudflared
-          # sudo cloudflared service install $TOKEN
+          sudo cloudflared service install $TOKEN
         env:
-          TOKEN: ${{ secrets.API_TOKEN }}
+          TOKEN: ${{ secrets.CF_TUNNEL_SEC }}
   
       - name: Download and Extract VS Code CLI
         run: |
