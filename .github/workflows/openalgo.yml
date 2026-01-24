@@ -14,11 +14,7 @@ jobs:
         run: |
           echo "TRIGGERING_USER=${{ github.actor }}" >> $GITHUB_ENV
           echo "APP_DIR=$HOME/zeta" >> $GITHUB_ENV
-
-      - name: Get Openalgo
-        run: |
-          git clone https://github.com/marketcalls/openalgo.git
-
+  
       - name: Get Cloudflared
         run: |
           curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
@@ -31,7 +27,30 @@ jobs:
           sudo cloudflared service install $TOKEN
         env:
           TOKEN: ${{ secrets.CF_TUNNEL_SEC }}
-  
+
+      - name: Get Openalgo & setup
+        run: |
+          git clone https://github.com/marketcalls/openalgo.git
+          cd /home/runner/work/windows_rdp/windows_rdp/openalgo
+          
+          cp .sample.env .env
+          sed -i "s|http://127.0.0.1:5000|https://$URL|g" .env
+          sed -i "s|<broker>|$BROKER|g" .env
+          sed -i "s|YOUR_BROKER_API_KEY|$API_KEY|g" .env
+          sed -i "s|YOUR_BROKER_API_SECRET|$API_SECRET|g" .env
+          
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install eventlet guvicorn
+          pip install -r requirements.txt
+          gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
+          
+        env:
+          BROKER: ${{ secrets.BROKER }}
+          API_KEY: ${{ secrets.API_KEY }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          URL: ${{ secrets.URL }}
+      
       - name: Download and Extract VS Code CLI
         run: |
           echo "Downloading VS Code CLI..."
