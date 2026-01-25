@@ -43,9 +43,9 @@ jobs:
           source .venv/bin/activate
           
           pip install -r requirements.txt
-          pip install guvicorn
-          pip install eventlet
-          gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
+          #pip install guvicorn
+          #pip install eventlet
+          #gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:5000 app:app
           
         env:
           BROKER: ${{ secrets.BROKER }}
